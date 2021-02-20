@@ -18,6 +18,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using AuthDemo.Filter;
+using AuthDemo.Middelwares;
 
 namespace AuthDemo
 {
@@ -33,7 +35,10 @@ namespace AuthDemo
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
+            services.AddMvc(options =>
+            {
+                options.Filters.Add<AuthorizeFilter>();
+            }).SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
             //services.AddControllers();
 
             #region 驗證
@@ -50,9 +55,9 @@ namespace AuthDemo
                 x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
                 x.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
             })
-            .AddJwtBearer(option=> 
+            .AddJwtBearer(option =>
             {
-                
+
                 option.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateLifetime = true,
@@ -61,7 +66,7 @@ namespace AuthDemo
                     {
                         string acc = m.FirstOrDefault().Split('|').FirstOrDefault();
                         bool status = m != null && m.FirstOrDefault().Equals(Const.ValidAudienceList.Where(x => x.Key == acc).FirstOrDefault().Value);
-                        return m != null && m.FirstOrDefault().Equals(Const.ValidAudienceList.Where(x=>x.Key == acc).FirstOrDefault().Value);
+                        return m != null && m.FirstOrDefault().Equals(Const.ValidAudienceList.Where(x => x.Key == acc).FirstOrDefault().Value);
                     },
                     ValidateIssuer = true,
                     ValidIssuer = audienceConfig["Issuer"],//發行人
@@ -73,26 +78,14 @@ namespace AuthDemo
                 };
                 option.Events = new JwtBearerEvents
                 {
-                    //OnAuthenticationFailed = context =>
-                    //{
-                    //    var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(JwtBearerEvents));
-                    //    logger.LogError("Authentication failed.", context.Exception);
-                    //    return Task.CompletedTask;
-                    //},
-
-                    //OnMessageReceived = context =>
-                    //{
-                    //    return Task.CompletedTask;
-                    //},
-
                     OnChallenge = context =>
                     {
-                        //自定義授權失敗
+                        //自定義驗證失敗回傳內容
                         context.HandleResponse();
-                        var payload = JsonConvert.SerializeObject(new { Code = "401", Message = "您無權訪問" });
+                        string reponseBody = JsonConvert.SerializeObject(new { Message = "驗證失敗，請登入後再進行嘗試" });
                         context.Response.ContentType = "application/json";
                         context.Response.StatusCode = StatusCodes.Status200OK;
-                        context.Response.WriteAsync(payload);
+                        context.Response.WriteAsync(reponseBody);
                         return Task.FromResult(0);
                     }
                 };
@@ -109,22 +102,11 @@ namespace AuthDemo
                 app.UseDeveloperExceptionPage();
             }
 
-            //app.UseHttpsRedirection();
-
-            //app.UseRouting();
-
-            ////app.UseAuthorization();
-            //app.UseAuthentication();
-            //app.UseEndpoints(endpoints =>
-            //{
-            //    endpoints.MapControllers();
-            //});
-
+            app.UseMiddleware<MyMiddlewares>();
             app.UseRouting();
             app.UseAuthentication();
-            //app.UseAuthorization();
+            app.UseAuthorization();
 
-          
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
