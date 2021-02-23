@@ -81,7 +81,6 @@ namespace AuthDemo
                     },
                     ValidateIssuer = true,
                     ValidIssuer = audienceConfig["Issuer"],//發行人
-                    //ValidAudience = audienceConfig["Audience"],//訂閱人
                     ValidateIssuerSigningKey = true,
                     ClockSkew = TimeSpan.Zero,
                     RequireExpirationTime = true,

@@ -15,14 +15,11 @@ namespace AuthDemo.Controllers
     {
         public TestController()
         {
-            if (Const.ValidAudienceList == null)
-            {
-                Const.ValidAudienceList = new Dictionary<string, string>();
-            }
+           
         }
         public string Get()
         {
-            return JsonConvert.SerializeObject(new { Code = "401", Message = "很抱歉，您无权访问该接口；Jason.Song（成长的小猪）写了一个JWT权限验证失败后自定义返回Json数据对象，来源：https://blog.csdn.net/jasonsong2008" });
+            return "This Run~";
         }
 
 
