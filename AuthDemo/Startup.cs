@@ -1,35 +1,38 @@
-﻿using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
-using System.Text.Json.Serialization;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using AuthDemo.Filter;
 using AuthDemo.Middelwares;
+using Autofac;
+using System.Data.SqlClient;
+using System.Reflection;
+using Model.ViewModel;
+using System.Collections.Generic;
 
 namespace AuthDemo
 {
     public class Startup
     {
+
+
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
+            if (Const.ValidAudienceList == null)
+            {
+                Const.ValidAudienceList = new Dictionary<string, string>();
+            }
         }
-
         public IConfiguration Configuration { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
@@ -37,9 +40,8 @@ namespace AuthDemo
         {
             services.AddMvc(options =>
             {
-                options.Filters.Add<AuthorizeFilter>();
+                //options.Filters.Add<AuthorizeFilter>();
             }).SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
-            //services.AddControllers();
 
             #region 驗證
             //讀取配置文件
@@ -65,8 +67,17 @@ namespace AuthDemo
                     AudienceValidator = (m, n, z) =>
                     {
                         string acc = m.FirstOrDefault().Split('|').FirstOrDefault();
-                        bool status = m != null && m.FirstOrDefault().Equals(Const.ValidAudienceList.Where(x => x.Key == acc).FirstOrDefault().Value);
-                        return m != null && m.FirstOrDefault().Equals(Const.ValidAudienceList.Where(x => x.Key == acc).FirstOrDefault().Value);
+                        string value = string.Empty;
+                        bool tokenKeyIsexist = Const.ValidAudienceList.TryGetValue(acc, out value);
+                        if (tokenKeyIsexist)
+                        {
+                            bool status = m != null && m.FirstOrDefault().Equals(value);
+                            return m != null && m.FirstOrDefault().Equals(value);
+                        }
+                        else
+                        {
+                            return false;
+                        }
                     },
                     ValidateIssuer = true,
                     ValidIssuer = audienceConfig["Issuer"],//發行人
@@ -82,7 +93,7 @@ namespace AuthDemo
                     {
                         //自定義驗證失敗回傳內容
                         context.HandleResponse();
-                        string reponseBody = JsonConvert.SerializeObject(new { Message = "驗證失敗，請登入後再進行嘗試" });
+                        string reponseBody = JsonConvert.SerializeObject(new ResponseModel {StatsuCode=StatusCodes.Status401Unauthorized,  Data=string.Empty,  Message = "登入失敗，請登入後再進行嘗試" });
                         context.Response.ContentType = "application/json";
                         context.Response.StatusCode = StatusCodes.Status200OK;
                         context.Response.WriteAsync(reponseBody);
@@ -93,6 +104,33 @@ namespace AuthDemo
             });
             #endregion
         }
+
+        public void ConfigureContainer(ContainerBuilder builder)
+        {
+            //builder.Register(x => new SqlConnection(Configuration.GetSection("SqlServer")["SqlServerConnection"]))
+            //    .As<SqlConnection>()
+            //    .InstancePerLifetimeScope();
+            // 通過Autofac自動完成依賴注入
+            var assemblies = new Assembly[]
+            {
+                Assembly.Load("AuthDemo"),
+                Assembly.Load("Service") ,
+                Assembly.Load("Repository")
+            };
+            //// 註冊Controller
+            builder.RegisterAssemblyTypes(assemblies)
+                .Where(x=> {
+                    Console.WriteLine(x.Name);
+                    return (x.Name.EndsWith("Service") || x.Name.EndsWith("Repository")) && !x.IsInterface;
+                })
+                .AsImplementedInterfaces()
+                .PropertiesAutowired()
+                .InstancePerLifetimeScope();
+            builder.Register(x => new SqlConnection(Configuration.GetSection("SqlServer")["SqlServerConnection"]))
+                .As<SqlConnection>()
+                .InstancePerLifetimeScope();
+        }
+
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -106,11 +144,12 @@ namespace AuthDemo
             app.UseRouting();
             app.UseAuthentication();
             app.UseAuthorization();
-
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
             });
         }
+
+
     }
 }

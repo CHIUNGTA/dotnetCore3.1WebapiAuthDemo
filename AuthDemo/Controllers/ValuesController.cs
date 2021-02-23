@@ -1,10 +1,15 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Autofac;
+using Interface.Service;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Model.SqlServerInfo;
+using Model.ViewModel;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Utility;
 
 namespace AuthDemo.Controllers
 {
@@ -12,10 +17,27 @@ namespace AuthDemo.Controllers
     [ApiController]
     public class ValuesController : ControllerBase
     {
-        [HttpGet]
-        public string Get()
+        private readonly IAccount_Service _loginService;
+        public ValuesController(IAccount_Service login_Object)
         {
-            return "non role";
+            if (_loginService == null)
+            {
+                this._loginService = login_Object;
+            }
+        }
+
+        [HttpGet]
+        public object Get()
+        {
+            var data = this._loginService.GetAll();
+            return data;
+        }
+
+        [HttpGet]
+        [Route("byid")]
+        public object GetById(int id)
+        {
+            return this._loginService.GetById(id);
         }
 
         [HttpGet]
@@ -24,6 +46,19 @@ namespace AuthDemo.Controllers
         public ActionResult<IEnumerable<string>> GetAdimnAndClient()
         {
             return new string[] { "admin", "client" };
+        }
+
+        [HttpPost]
+        [Route("singup")]
+        public ResponseModel Singup([FromBody] User user)
+        {
+            if (String.IsNullOrEmpty(user.LoginName) || String.IsNullOrEmpty(user.LoginPassword))
+            {
+                return new ResponseModel() { Message = "請輸入完整資料", StatsuCode = StatusCodes.Status204NoContent, Data = null };
+            }
+            user.LoginPassword = MyEncryption.Encryption_sha256(user.LoginPassword);
+
+            return this.Singup(user);
         }
 
 
@@ -42,26 +77,6 @@ namespace AuthDemo.Controllers
         public ActionResult<IEnumerable<string>> GetAdmin()
         {
             return new string[] { "Admin"}; 
-
         }
-
-        //        [HttpGet]
-        //        [Route("Test2")]
-        //        [Authorize]
-        //        public string Get2()
-        //        {
-        //bool status=             HttpContext.User.Identity.IsAuthenticated;
-        //            return "Test2";
-        //        }
-
-        //        [HttpGet]
-        //        [Route("UU")]
-        //        [Authorize]
-        //        public string UU()
-        //        {
-        //            return "admin";
-        //        }
-
-
     }
 }
