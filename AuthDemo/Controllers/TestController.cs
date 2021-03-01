@@ -22,6 +22,13 @@ namespace AuthDemo.Controllers
             return "This Run~";
         }
 
+        [HttpGet]
+        [Route("logout")]
+        public async Task<object>Logout(string acc)
+        {
+            Const.ValidAudienceList.Remove(acc);
+            return "ok";
+        }
 
         [HttpGet]
         [Route("login")]
