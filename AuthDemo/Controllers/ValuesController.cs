@@ -50,11 +50,11 @@ namespace AuthDemo.Controllers
 
         [HttpPost]
         [Route("singup")]
-        public ResponseModel Singup([FromBody] User user)
+        public ResponseModel<string> Singup([FromBody] User user)
         {
             if (String.IsNullOrEmpty(user.LoginName) || String.IsNullOrEmpty(user.LoginPassword))
             {
-                return new ResponseModel() { Message = "請輸入完整資料", StatsuCode = StatusCodes.Status204NoContent, Data = null };
+                return new ResponseModel<string>() { Message = "請輸入完整資料", StatsuCode = StatusCodes.Status204NoContent, Data = null };
             }
             user.LoginPassword = MyEncryption.Encryption_sha256(user.LoginPassword);
 

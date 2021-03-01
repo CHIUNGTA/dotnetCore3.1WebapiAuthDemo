@@ -7,7 +7,7 @@ namespace Model.ViewModel
     /// <summary>
     /// API統一回應模型
     /// </summary>
-    public class ResponseModel
+    public class ResponseModel<T>
     {
         /// <summary>
         /// 
@@ -20,6 +20,6 @@ namespace Model.ViewModel
         /// <summary>
         /// Response Body
         /// </summary>
-        public object Data { get; set; }
+        public T Data { get; set; }
     }
 }

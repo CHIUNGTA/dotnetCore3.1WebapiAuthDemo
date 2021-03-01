@@ -4,9 +4,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Model.SqlServerInfo;
 using Model.ViewModel;
+using NSwag.Annotations;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using Utility;
 
@@ -26,19 +28,15 @@ namespace AuthDemo.Controllers
            
         }
 
-        [HttpGet]
-        public string Get()
-        {
-            return "Account";
-        }
+        
 
         [HttpPost]
         [Route("singup")]
-        public ActionResult<ResponseModel> Singup([FromBody]User user)
+        public ActionResult<ResponseModel<string>> Singup([FromBody]User user)
         {
             if (String.IsNullOrEmpty(user.LoginName) || String.IsNullOrEmpty(user.LoginPassword))
             {
-                return new ResponseModel() { Message = "請輸入完整資料", StatsuCode = StatusCodes.Status204NoContent, Data = null }; 
+                return new ResponseModel<string>() { Message = "請輸入完整資料", StatsuCode = StatusCodes.Status204NoContent, Data = null }; 
             }
             user.LoginPassword = MyEncryption.Encryption_sha256(user.LoginPassword);
             var result = this._accountService.Singup(user);
@@ -47,49 +45,57 @@ namespace AuthDemo.Controllers
 
         [HttpGet]
         [Route("login")]
-        public async Task<object> GetJWTToken(string acc, string pws)
+        //[SwaggerResponse(HttpStatusCode.OK, Description = "OKOK", Type = typeof(ResponseModel<string>))]
+        [ProducesResponseType(typeof(ResponseModel<LoginModel>),200)]
+        [ProducesResponseType(typeof(ResponseModel<string>), 500)]
+        public ActionResult<ResponseModel<LoginModel>> GetJWTToken(string acc, string pws)
         {
-            var _user = HttpContext.User;
-            string jwtStr = string.Empty;
-            bool suc = false;
 
-            string tempToken = $"{acc}|{pws}|{DateTime.Now}";
-            this.TokenReflash(tempToken);
-
-
-
-            //TODO 後面串聯DB取得帳號驗證資料與使用者相關資料
-
-            if (string.IsNullOrEmpty(acc) || string.IsNullOrEmpty(pws))
+            try
             {
-                return new JsonResult(new
+                var _user = HttpContext.User;
+                string jwtStr = string.Empty;
+                bool suc = false;
+
+                string tempToken = $"{acc}|{pws}|{DateTime.Now}";
+                this.TokenReflash(tempToken);
+
+
+
+                //TODO 後面串聯DB取得帳號驗證資料與使用者相關資料
+
+                #region 範例(模擬資料庫)
+                if (string.IsNullOrEmpty(acc) || string.IsNullOrEmpty(pws))
                 {
-                    Status = false,
-                    message = "密碼不可為空值"
-                });
+                    return new JsonResult(new
+                    {
+                        Status = false,
+                        message = "密碼不可為空值"
+                    });
+                }
+
+                TokenModelJWT tokenModel = new TokenModelJWT();
+                tokenModel.Uid = 1;
+                if (acc.ToUpper() != "TEST")
+                {
+                    tokenModel.Role = "Client";
+                }
+                else
+                {
+                    tokenModel.Role = "Admin";
+                }
+                tokenModel.Temp = tempToken;
+
+                jwtStr = JwtHelper.IssueJWT(tokenModel);
+                suc = true;
+                #endregion
+                return new ResponseModel<LoginModel>() { Message = "", StatsuCode = 200, Data = new LoginModel() { success = suc, token = jwtStr } };
+            }
+            catch (Exception ex)
+            {
+                return new ResponseModel<LoginModel>() { Message = "發生不可知錯誤", StatsuCode = 200};
             }
 
-            TokenModelJWT tokenModel = new TokenModelJWT();
-            tokenModel.Uid = 1;
-            if (acc.ToUpper() != "TEST")
-            {
-                tokenModel.Role = "Client";
-            }
-            else
-            {
-                tokenModel.Role = "Admin";
-            }
-            tokenModel.Temp = tempToken;
-
-            jwtStr = JwtHelper.IssueJWT(tokenModel);
-            suc = true;
-
-
-            return Ok(new
-            {
-                success = suc,
-                token = jwtStr
-            });
         }
 
         /// <summary>

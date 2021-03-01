@@ -18,6 +18,7 @@ using System.Data.SqlClient;
 using System.Reflection;
 using Model.ViewModel;
 using System.Collections.Generic;
+using NSwag.Generation.Processors.Security;
 
 namespace AuthDemo
 {
@@ -42,6 +43,24 @@ namespace AuthDemo
             {
                 //options.Filters.Add<AuthorizeFilter>();
             }).SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
+
+            #region 
+            //services.AddOpenApiDocument();
+            services.AddSwaggerDocument(settings =>
+            {
+                settings.AddSecurity("輸入身份認證Token", Enumerable.Empty<string>(), new NSwag.OpenApiSecurityScheme()
+                {
+                    Description = "JWT認證 請輸入Bearer {token}",
+                    Name = "Authorization",
+                    In = NSwag.OpenApiSecurityApiKeyLocation.Header,
+                    Type = NSwag.OpenApiSecuritySchemeType.ApiKey
+                });
+
+                settings.OperationProcessors.Add(
+                    new AspNetCoreOperationSecurityScopeProcessor("JWT Token"));
+            });
+
+            #endregion
 
             #region 驗證
             //讀取配置文件
@@ -92,7 +111,7 @@ namespace AuthDemo
                     {
                         //自定義驗證失敗回傳內容
                         context.HandleResponse();
-                        string reponseBody = JsonConvert.SerializeObject(new ResponseModel {StatsuCode=StatusCodes.Status401Unauthorized,  Data=string.Empty,  Message = "登入失敗，請登入後再進行嘗試" });
+                        string reponseBody = JsonConvert.SerializeObject(new ResponseModel<string> {StatsuCode=StatusCodes.Status401Unauthorized,  Data=string.Empty,  Message = "登入失敗，請登入後再進行嘗試" });
                         context.Response.ContentType = "application/json";
                         context.Response.StatusCode = StatusCodes.Status200OK;
                         context.Response.WriteAsync(reponseBody);
@@ -139,6 +158,7 @@ namespace AuthDemo
                 app.UseDeveloperExceptionPage();
             }
 
+
             app.UseMiddleware<MyMiddlewares>();
             app.UseRouting();
             app.UseAuthentication();
@@ -147,6 +167,10 @@ namespace AuthDemo
             {
                 endpoints.MapControllers();
             });
+
+            app.UseOpenApi();
+            app.UseSwaggerUi3();
+           
         }
 
 

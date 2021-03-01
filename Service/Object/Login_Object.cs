@@ -16,7 +16,7 @@ namespace Service.Object
             this._db = db; 
         }
 
-        public ResponseModel Login(string loginName, string password)
+        public ResponseModel<User> Login(string loginName, string password)
         {
             string sql = @"select * from User Where LoginName = @loginName and LoginPassword = @loginPassword ; ";
             object param = new
@@ -24,9 +24,9 @@ namespace Service.Object
                 loginName = loginName,
                 loginPassword = password
             };
-            return new ResponseModel()
+            return new ResponseModel<User>()
             {
-                Data = _db.Query<User>(sql, param) ,
+                Data = _db.Query<User>(sql, param).FirstOrDefault() ,
                 Message = string.Empty , 
                 StatsuCode = 200
             };
@@ -42,19 +42,19 @@ namespace Service.Object
             return _db.GetDataByParam<User>(new { UserId = id }).FirstOrDefault();
         }
 
-        public ResponseModel Singup(User user)
+        public ResponseModel<string> Singup(User user)
         {
             try
             {
                 bool status = _db.Insert<User>(user) != 0;
                 if (status)
-                    return new ResponseModel() { StatsuCode = 200, Data = null, Message = "成功註冊，請用手機驗證" };
-                return new ResponseModel() { StatsuCode = 200, Data = null, Message = "註冊失敗" };
+                    return new ResponseModel<string>() { StatsuCode = 200, Data = null, Message = "成功註冊，請用手機驗證" };
+                return new ResponseModel<string>() { StatsuCode = 200, Data = null, Message = "註冊失敗" };
 
             }
             catch (Exception ex)
             {
-                return new ResponseModel() { StatsuCode = 500, Message = "發生不可預期之錯誤" };
+                return new ResponseModel<string>() { StatsuCode = 500, Message = "發生不可預期之錯誤" };
             }
         }
     }
